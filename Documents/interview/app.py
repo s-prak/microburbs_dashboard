@@ -114,10 +114,10 @@ def get_property_data(endpoint):
 
 @app.route('/api/avm')
 def get_avm():
-    address = request.args.get('address', '')
+    property_id = request.args.get('id', '')
     
-    if not address:
-        return jsonify({"error": "Address is required"})
+    if not property_id:
+        return jsonify({"error": "Property ID is required"})
     
     headers = {
         "Authorization": f"Bearer {API_TOKEN}",
@@ -126,7 +126,7 @@ def get_avm():
     
     try:
         url = f"{API_BASE_URL}/avm"
-        response = requests.get(url, headers=headers, params={"address": address}, timeout=10)
+        response = requests.get(url, headers=headers, params={"id": property_id}, timeout=10)
         
         if response.status_code == 401:
             error_msg = response.json().get('error', 'Unauthorized') if response.text else 'Unauthorized'
@@ -139,10 +139,10 @@ def get_avm():
 
 @app.route('/api/cma')
 def get_cma():
-    address = request.args.get('address', '')
+    property_id = request.args.get('id', '')
     
-    if not address:
-        return jsonify({"error": "Address is required"})
+    if not property_id:
+        return jsonify({"error": "Property ID is required"})
     
     headers = {
         "Authorization": f"Bearer {API_TOKEN}",
@@ -151,7 +151,7 @@ def get_cma():
     
     try:
         url = f"{API_BASE_URL}/cma"
-        response = requests.get(url, headers=headers, params={"address": address}, timeout=10)
+        response = requests.get(url, headers=headers, params={"id": property_id}, timeout=10)
         
         if response.status_code == 401:
             error_msg = response.json().get('error', 'Unauthorized') if response.text else 'Unauthorized'

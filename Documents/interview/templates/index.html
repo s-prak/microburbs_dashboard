@@ -278,7 +278,7 @@
         </div>
         <div class="control-group">
           <label for="property-id">Property ID (GNAF_ID)</label>
-          <input type="text" id="property-id" placeholder="e.g., GANSW704074813">
+          <input type="text" id="property-id" placeholder="Try: GANSW704074813" value="GANSW704074813">
         </div>
         <div class="control-group">
           <button class="btn" onclick="loadPropertyData()">Get Data</button>
@@ -320,8 +320,8 @@
     <div id="avm" class="tab-content">
       <div class="controls">
         <div class="control-group">
-          <label for="avm-address">Property Address</label>
-          <input type="text" id="avm-address" placeholder="e.g., 17 Dulungra Avenue, Belmont North, NSW">
+          <label for="avm-id">Property ID (GNAF_ID)</label>
+          <input type="text" id="avm-id" placeholder="Try: GANSW704074813" value="GANSW704079886">
         </div>
         <div class="control-group">
           <button class="btn" onclick="loadAVMData()">Get Valuation</button>
@@ -334,8 +334,8 @@
     <div id="cma" class="tab-content">
       <div class="controls">
         <div class="control-group">
-          <label for="cma-address">Property Address</label>
-          <input type="text" id="cma-address" placeholder="e.g., 17 Dulungra Avenue, Belmont North, NSW">
+          <label for="cma-id">Property ID (GNAF_ID)</label>
+          <input type="text" id="cma-id" placeholder="Try: GANSW704074813" value="GANSW704079886">
         </div>
         <div class="control-group">
           <button class="btn" onclick="loadCMAData()">Get Market Analysis</button>
@@ -485,22 +485,22 @@
 
     // === AVM TAB ===
     async function loadAVMData() {
-      const address = document.getElementById('avm-address').value;
+      const propertyId = document.getElementById('avm-id').value;
       const contentDiv = document.getElementById('avm-content');
-      if (!address) {
-        contentDiv.innerHTML = '<div class="error"><p>Please enter an address</p></div>';
+      if (!propertyId) {
+        contentDiv.innerHTML = '<div class="error"><p>Please enter a Property ID</p></div>';
         return;
       }
       contentDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Getting valuation...</p></div>';
 
       try {
-        const response = await fetch(`/api/avm?address=${encodeURIComponent(address)}`);
+        const response = await fetch(`/api/avm?id=${encodeURIComponent(propertyId)}`);
         const data = await response.json();
         if (data.error) {
           contentDiv.innerHTML = `<div class="error"><p>${data.error}</p></div>`;
           return;
         }
-        contentDiv.innerHTML = `<div class="data-display"><h2>Automated Valuation</h2><h3>${address}</h3><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+        contentDiv.innerHTML = `<div class="data-display"><h2>Automated Valuation</h2><h3>Property ID: ${propertyId}</h3><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
       } catch (error) {
         contentDiv.innerHTML = `<div class="error"><p>Failed: ${error.message}</p></div>`;
       }
@@ -508,22 +508,22 @@
 
     // === CMA TAB ===
     async function loadCMAData() {
-      const address = document.getElementById('cma-address').value;
+      const propertyId = document.getElementById('cma-id').value;
       const contentDiv = document.getElementById('cma-content');
-      if (!address) {
-        contentDiv.innerHTML = '<div class="error"><p>Please enter an address</p></div>';
+      if (!propertyId) {
+        contentDiv.innerHTML = '<div class="error"><p>Please enter a Property ID</p></div>';
         return;
       }
       contentDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Getting market analysis...</p></div>';
 
       try {
-        const response = await fetch(`/api/cma?address=${encodeURIComponent(address)}`);
+        const response = await fetch(`/api/cma?id=${encodeURIComponent(propertyId)}`);
         const data = await response.json();
         if (data.error) {
           contentDiv.innerHTML = `<div class="error"><p>${data.error}</p></div>`;
           return;
         }
-        contentDiv.innerHTML = `<div class="data-display"><h2>Market Analysis</h2><h3>${address}</h3><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+        contentDiv.innerHTML = `<div class="data-display"><h2>Market Analysis</h2><h3>Property ID: ${propertyId}</h3><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
       } catch (error) {
         contentDiv.innerHTML = `<div class="error"><p>Failed: ${error.message}</p></div>`;
       }
