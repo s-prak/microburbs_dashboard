@@ -1,10 +1,24 @@
 from flask import Flask, jsonify, render_template, request
 import requests
+import json
+import math
 
 app = Flask(__name__)
 
 API_BASE_URL = "https://www.microburbs.com.au/report_generator/api"
 API_TOKEN = "test"
+
+def clean_nan_values(obj):
+    """Recursively replace NaN, Infinity values with None for JSON serialization"""
+    if isinstance(obj, dict):
+        return {k: clean_nan_values(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_nan_values(item) for item in obj]
+    elif isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    return obj
 
 # Note: Sandbox token only works for Belmont North
 SUBURBS = [
@@ -16,6 +30,10 @@ PROPERTY_TYPES = ['unit', 'house', 'townhouse']
 @app.route('/')
 def index():
     return render_template('index.html', suburbs=SUBURBS, property_types=PROPERTY_TYPES)
+
+@app.route('/test')
+def test():
+    return render_template('test.html')
 
 @app.route('/api/properties')
 def get_properties():
@@ -46,14 +64,25 @@ def get_properties():
         
         print(f"Response Status: {response.status_code}")
         print(f"Response Headers: {dict(response.headers)}")
+        print(f"Response Text (first 500 chars): {response.text[:500]}")
         
         if response.status_code == 401:
             print("API returned 401 - Unauthorized")
-            error_msg = response.json().get('error', 'Unauthorized') if response.text else 'Unauthorized'
-            return jsonify({"error": error_msg, "results": []})
+            return jsonify({"error": "Unauthorized - check API token", "results": []})
         
         response.raise_for_status()
-        data = response.json()
+        
+        # Try to parse JSON
+        try:
+            data = response.json()
+        except ValueError as json_err:
+            print(f"JSON Parse Error: {json_err}")
+            print(f"Response content type: {response.headers.get('content-type')}")
+            return jsonify({"error": "API returned invalid JSON response", "results": []})
+        
+        # Clean NaN values from the data
+        data = clean_nan_values(data)
+        
         print(f"Success! Received {len(data.get('results', []))} properties")
         return jsonify(data)
         

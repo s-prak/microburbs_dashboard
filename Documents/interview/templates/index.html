@@ -299,13 +299,19 @@
         <div class="control-group">
           <label for="suburb-endpoint">Data Type</label>
           <select id="suburb-endpoint">
-            <option value="summary">Summary</option>
+            <option value="amenity">Amenities</option>
+            <option value="demographics">Demographics</option>
+            <option value="development_applications">Development Applications</option>
+            <option value="list_suburbs">List Suburbs</option>
             <option value="market_insights">Market Insights</option>
+            <option value="market_insights_by_pocket">Market Insights by Pocket</option>
+            <option value="market_insights_by_street">Market Insights by Street</option>
             <option value="risk_factors">Risk Factors</option>
             <option value="school_catchments">School Catchments</option>
             <option value="schools">Schools</option>
             <option value="similar_suburbs">Similar Suburbs</option>
             <option value="information">Suburb Information</option>
+            <option value="summary">Summary</option>
             <option value="zoning">Zoning</option>
           </select>
         </div>
@@ -346,7 +352,7 @@
   </div>
 
   <script>
-    // Version 2.0 - Updated with all endpoints
+    // Version 2025-11-05-15-19 - Fixed rendering
     let allProperties = [];
 
     // Tab Switching
@@ -366,13 +372,51 @@
       contentDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading properties...</p></div>';
 
       try {
-        const response = await fetch(`/api/properties?suburb=${encodeURIComponent(suburb)}&property_type=${propertyType}`);
-        const data = await response.json();
-        if (data.error) throw new Error(data.error);
+        console.log('Fetching properties for', suburb, propertyType);
+        const url = `/api/properties?suburb=${encodeURIComponent(suburb)}&property_type=${propertyType}`;
+        console.log('Fetch URL:', url);
+        
+        const response = await fetch(url);
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        console.log('Response headers:', Object.fromEntries(response.headers));
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const text = await response.text();
+        console.log('Response text (first 200 chars):', text.substring(0, 200));
+        
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (parseError) {
+          console.error('JSON parse error:', parseError);
+          console.error('Full response text:', text);
+          throw new Error('Invalid JSON response from server');
+        }
+        
+        console.log('Parsed data:', data);
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
         allProperties = data.results || [];
+        console.log('Number of properties:', allProperties.length);
+        
+        if (allProperties.length === 0) {
+          contentDiv.innerHTML = '<div class="empty"><p>No properties found for this suburb and type.</p></div>';
+          updateStats([]);
+          return;
+        }
+        
         displayProperties(allProperties);
       } catch (error) {
-        contentDiv.innerHTML = `<div class="error"><p>Failed: ${error.message}</p><button class="btn" onclick="loadProperties()">Retry</button></div>`;
+        console.error('Error loading properties:', error);
+        console.error('Error stack:', error.stack);
+        contentDiv.innerHTML = `<div class="error"><p>Error: ${error.message}</p><p style="font-size: 0.9em; margin-top: 8px;">Check browser console for details</p><button class="btn" onclick="loadProperties()">Retry</button></div>`;
       }
     }
 
@@ -384,46 +428,81 @@
         if (!searchTerm) return true;
         const areaName = (prop.area_name || '').toLowerCase();
         const street = (prop.address?.street || '').toLowerCase();
-        const description = (prop.description || '').toLowerCase();
+        const attributes = prop.attributes || {};
+        const description = (attributes.description || '').toLowerCase();
         return areaName.includes(searchTerm) || street.includes(searchTerm) || description.includes(searchTerm);
       });
 
+      console.log('Filtered properties:', filtered.length);
       updateStats(filtered);
 
       if (filtered.length === 0) {
-        contentDiv.innerHTML = '<div class="empty"><p>No properties found.</p></div>';
+        contentDiv.innerHTML = '<div class="empty"><p>No properties match your search.</p></div>';
         return;
       }
 
       const grid = document.createElement('div');
       grid.className = 'properties-grid';
-      filtered.forEach(property => grid.appendChild(createPropertyCard(property)));
+      filtered.forEach(property => {
+        const card = createPropertyCard(property);
+        if (card) grid.appendChild(card);
+      });
       contentDiv.innerHTML = '';
       contentDiv.appendChild(grid);
+      console.log('Rendered', filtered.length, 'property cards');
     }
 
     function createPropertyCard(property) {
-      const card = document.createElement('div');
-      card.className = 'property-card';
-      const address = property.address || {};
-      const attributes = property.attributes || {};
-      const description = property.description || 'No description available';
-      const truncatedDesc = description.length > 200 ? description.substring(0, 200) + '...' : description;
+      try {
+        const card = document.createElement('div');
+        card.className = 'property-card';
+        
+        const address = property.address || {};
+        const attributes = property.attributes || {};
+        const description = String(attributes.description || 'No description available');
+        const truncatedDesc = description.length > 200 ? description.substring(0, 200) + '...' : description;
+        
+        // Safely format price
+        let priceHtml = '';
+        if (property.price) {
+          try {
+            const priceNum = Number(property.price);
+            if (!isNaN(priceNum) && priceNum > 0) {
+              priceHtml = '<div class="stat-item">💵 $' + Math.round(priceNum).toLocaleString() + '</div>';
+            }
+          } catch (e) {
+            console.warn('Price formatting error:', e);
+          }
+        }
+        
+        const areaName = String(property.area_name || 'Property');
+        const buildingSize = String(attributes.building_size === 'None' || attributes.building_size === 'nan' ? 'N/A' : attributes.building_size || 'N/A');
+        const street = String(address.street || 'Address N/A');
+        const sal = String(address.sal || '');
+        const bedrooms = Number(attributes.bedrooms) || 0;
+        const bathrooms = Number(attributes.bathrooms) || 0;
 
-      card.innerHTML = `
-        <div class="property-header">
-          <h3>${property.area_name || 'Property'}</h3>
-          <span class="property-badge">${attributes.building_size || 'N/A'}</span>
-        </div>
-        <div class="property-address">📍 ${address.street || 'Address N/A'}, ${address.sal || ''}</div>
-        <div class="property-stats">
-          <div class="stat-item">🛏️ ${attributes.bedrooms || 0} Beds</div>
-          <div class="stat-item">🚿 ${attributes.bathrooms || 0} Baths</div>
-          ${property.price ? `<div class="stat-item">💵 $${Number(property.price).toLocaleString()}</div>` : ''}
-        </div>
-        <div class="property-description">${truncatedDesc}</div>
-      `;
-      return card;
+        card.innerHTML = `
+          <div class="property-header">
+            <h3>${areaName}</h3>
+            <span class="property-badge">${buildingSize}</span>
+          </div>
+          <div class="property-address">📍 ${street}${sal ? ', ' + sal : ''}</div>
+          <div class="property-stats">
+            <div class="stat-item">🛏️ ${bedrooms} Beds</div>
+            <div class="stat-item">🚿 ${bathrooms} Baths</div>
+            ${priceHtml}
+          </div>
+          <div class="property-description">${truncatedDesc}</div>
+        `;
+        return card;
+      } catch (error) {
+        console.error('Error creating property card:', error, property);
+        const errorCard = document.createElement('div');
+        errorCard.className = 'property-card';
+        errorCard.innerHTML = '<p>Error displaying property</p>';
+        return errorCard;
+      }
     }
 
     function updateStats(properties) {
